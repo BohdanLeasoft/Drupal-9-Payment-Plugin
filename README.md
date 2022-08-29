@@ -1,2 +1,2 @@
-# Drupal-9-Payment-Plugin
-Drupal 9 Payment Plugin
+# Ginger Payment Gateway for Drupal 9 Commerce 2.x, 
+

@@ -1,0 +1,8 @@
+{
+  "name": "BohdanLeasoft/Drupal-9-Payment-Plugin",
+  "description": "An integration between Drupal 9 with Commerce 2 and a Ginger gateway.",
+  "type": "drupal-module",
+  "require": {
+    "gingerpayments/ginger-plugin-sdk": "^1.4"
+  }
+}
