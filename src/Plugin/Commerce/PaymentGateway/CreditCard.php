@@ -3,6 +3,7 @@
 namespace Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway\BaseOffsitePaymentGateway;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Provides the CreditCard offsite Checkout payment gateway.

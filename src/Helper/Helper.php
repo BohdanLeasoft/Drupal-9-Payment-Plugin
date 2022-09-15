@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\commerce_ginger\Helpers;
+namespace Drupal\commerce_ginger\Helper;
 
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
@@ -10,7 +10,7 @@ use Drupal\Core\Url;
  *
  * This class needs to implement methods which could be used by several classes
  *
- * @package Drupal\commerce_ginger\Helpers
+ * @package Drupal\commerce_ginger\Helper
  */
 class Helper
 {
@@ -39,6 +39,37 @@ class Helper
         '#type' => 'link',
         '#title' => $this->t('Cancel'),
         '#url' => Url::fromUri($form['#cancel_url']),
+      ];
+      return $form;
+    }
+
+    public function setBirthday(array $form)
+    {
+      $form['birthdate'] = [
+        '#type' => 'date',
+        '#title' => $this->t('Please, set your birthday date'),
+        '#required' => true
+      ];
+      return $form;
+    }
+
+    public function setGender(array $form)
+    {
+      $form['gender'] = [
+        '#type' => 'select',
+        '#title' => $this->t('Choose gender'),
+        '#options' => [$this->t('Male'), $this->t('Female')],
+        '#value' => ['male', 'female']
+      ];
+      return $form;
+    }
+
+    public function setTermsLink(array $form, $link)
+    {
+      $form['verified_terms_of_service'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('I accept '). '<a href="'.$link.'" target="_blank">'.$this->t('Terms and Conditions').'</a>',
+        '#required' => true
       ];
       return $form;
     }

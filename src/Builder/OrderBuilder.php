@@ -1,9 +1,9 @@
 <?php
 
-namespace Drupal\commerce_ginger\Builders;
+namespace Drupal\commerce_ginger\Builder;
 
 use Drupal\Core\Url;
-use Drupal\commerce_ginger\Bankconfigs\Bankconfig;
+use Drupal\commerce_ginger\Bankconfig\Bankconfig;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use GingerPluginSdk\Collections\OrderLines;
@@ -17,73 +17,24 @@ use GingerPluginSdk\Properties\Amount;
 use GingerPluginSdk\Properties\Currency;
 use GingerPluginSdk\Properties\Percentage;
 use GingerPluginSdk\Properties\VatPercentage;
+use GingerPluginSdk\Properties\RawCost;
 use GingerPluginSdk\Entities\Customer;
 use GingerPluginSdk\Client;
-use Drupal\commerce_ginger\Builders\CustomerBuilder;
+use Drupal\commerce_ginger\Builder\CustomerBuilder;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\commerce_ginger\Helper\OrderHelper;
+use GingerPluginSdk\Entities\Client as EntitiesClient;
 
 /**
  * Class OrderBuilder.
  *
  * This class contain methods for creating an order
  *
- * @package Drupal\commerce_ginger\Builders
+ * @package Drupal\commerce_ginger\Builder
  */
 
 class OrderBuilder extends CustomerBuilder
 {
-  /**
-   * @var Bankconfig
-   */
-  public $bankconfig;
-  /**
-   * @var CustomerBuilder
-   */
-  public $customerBuilder;
-  /**
-   * @var ClientBuilder
-   */
-  public $clientBuilder;
-
-  public function __construct()
-  {
-    parent::__construct();
-    $this->bankconfig = new Bankconfig();
-    $this->customerBuilder = New CustomerBuilder();
-    $this->clientBuilder = New ClientBuilder();
-  }
-
-  public function getOrderPaymentByTransactionId($transaction_id, $entityTypeManager)
-  {
-    /** @var \Drupal\commerce_payment\PaymentStorageInterface $payment_storage */
-    $payment_storage = $entityTypeManager->getStorage('commerce_payment');
-    $payment = $payment_storage->loadByRemoteId($transaction_id);
-    return $payment;
-  }
-
-  public function isOrderRefunded(Order $order)
-  {
-    $orderArray = $order->toArray();
-    if (isset($orderArray['flags'])) {
-      foreach ($orderArray['flags'] as $flag) {
-        if ($flag == 'has-refunds') {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  public function isOrderCapturable(Order $order)
-  {
-    $orderArray = $order->toArray();
-    if (isset(current($orderArray['transactions'])['is_capturable'])) {
-      return current($orderArray['transactions'])['is_capturable'];
-    }
-    return false;
-  }
-
-
   public function preparePaymentMethodDetails($issuerId, $verifiedTerms)
   {
     return new PaymentMethodDetails(
@@ -163,44 +114,46 @@ class OrderBuilder extends CustomerBuilder
     $order_items_info = [];
     $order_items = $order->getItems();
     foreach ($order_items as $order_item) {
-      if (!empty($order_item)) {
-        $order_items_info[] = [
-          'id' => $order_item->id(),
-          'quantity' => number_format($order_item->getQuantity()),
-          'name' => $order_item->getTitle(),
-          'price' => $order_item->getUnitPrice()->getNumber()
-        ];
-      }
+      if (empty($order_item)) continue;
+      $order_items_info[] = [
+        'id' => $order_item->id(),
+        'quantity' => number_format($order_item->getQuantity()),
+        'name' => $order_item->getTitle(),
+        'price' => $order_item->getUnitPrice()->getNumber()
+      ];
     }
     return $order_items_info;
   }
 
-  public function getWebhookUrl($payment)
+  public function getEntitiesClient()
   {
-    /** @var \Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface $payment_gateway_plugin */
-    $payment_gateway_plugin = $payment->getPaymentGateway()->getPlugin();
-    return $payment_gateway_plugin->getNotifyUrl()->toString();
+    return new EntitiesClient(
+      $this->getUserAgent(),
+      Bankconfig::getPlatformName(),
+      null, // For now no ways to gat platform version were found
+      Bankconfig::getPluginName(),
+      Bankconfig::getPluginVersion()
+    );
   }
 
-
-  public function getReturnUrl($payment)
+  /**
+   * Collect data for extra_lines
+   *
+   * @return array
+   */
+  public function getExtraLines()
   {
-    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-    $order = $payment->getOrder();
-    return Url::fromRoute('commerce_payment.checkout.return', [
-      'commerce_order' => $order->id(),
-      'step' => 'payment',
-    ], ['absolute' => TRUE])->toString();
+    return [
+      'user_agent' => $this->getUserAgent(),
+      'platform_name' =>  Bankconfig::getPlatformName(),
+      'plugin_name' => Bankconfig::getPluginName(),
+      'plugin_version' => Bankconfig::getPluginVersion()
+    ];
   }
 
-  public function getCancelUrl($payment) {
-    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
-    $order = $payment->getOrder();
-
-    return Url::fromRoute('commerce_payment.checkout.cancel', [
-      'commerce_order' => $order->id(),
-      'step' => 'payment',
-    ], ['absolute' => TRUE])->toString();
+  public function getDescription($orderId)
+  {
+    return sprintf("%s: %s", t('Order number'), $orderId);
   }
 
   public function createOrder(
@@ -217,21 +170,18 @@ class OrderBuilder extends CustomerBuilder
 
     $order = new Order(
       currency:  new Currency($payment_amount->getCurrencyCode()),
-      amount: new Amount(floatval($raw_amount)*100),
+      amount: new Amount(new RawCost(floatval($raw_amount))),
       transactions: $transactions,
       customer: $customer,
       orderLines: $this->getOrderLines($payment),
       extra: new Extra(
-        $this->clientBuilder->getExtraLines()
+        $this->getExtraLines()
       ),
-      client: $this->clientBuilder->getEntitiesClient(),
-      webhook_url: $this->getWebhookUrl($payment),
-      return_url: $this->getReturnUrl($payment),
-      flags: null,
-      id: $payment->getOrderId(),
-      status: null,
+      client: $this->getEntitiesClient(),
+      webhook_url: OrderHelper::getWebhookUrl($payment),
+      return_url: OrderHelper::getReturnUrl($payment),
       merchantOrderId: $payment->getOrderId(),
-      description: sprintf("%s: %s", t('Order number'), $payment->getOrderId()),
+      description: $this->getDescription($payment->getOrderId()),
     );
 
     return $client->sendOrder($order);

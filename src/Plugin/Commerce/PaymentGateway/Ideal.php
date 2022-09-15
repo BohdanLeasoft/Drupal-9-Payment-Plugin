@@ -18,5 +18,19 @@ use Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway\BaseOffsitePaymentGate
  */
 class Ideal extends BaseOffsitePaymentGateway
 {
+  public function prepareForm(array $form)
+  {
+    $issuers = $this->builderRedefiner->getClient()->getIdealIssuers()->toArray();
 
+    $form['issuers'] = [
+      '#type' => 'select',
+      '#title' => $this
+        ->t('Choose a bank'),
+      '#options' => $this->helper->getValueFromIssuersArrayById($issuers, 'name'),
+      '#value' => $this->helper->getValueFromIssuersArrayById($issuers, 'id')
+    ];
+    $form = $this->helper->setDefaultButtons($form);
+
+    return $form;
+  }
 }

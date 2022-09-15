@@ -24,12 +24,16 @@ use Symfony\Component\HttpFoundation\Response;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal;
 use Drupal\commerce_ginger\Controller\Webhook;
-use Drupal\commerce_ginger\Redefiners\BuildersRedefiner;
+use Drupal\commerce_ginger\Redefiner\BuilderRedefiner;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
-use Drupal\commerce_ginger\Bankconfigs\Bankconfig;
+use Drupal\commerce_ginger\Bankconfig\Bankconfig;
 use Drupal\commerce_price\Entity\Currency;
+use Drupal\commerce_ginger\Helper\OrderHelper;
+use Drupal\commerce_ginger\Helper\Helper;
+use Drupal\commerce_ginger\Interface\PaymentMethodFormInterface;
+use GingerPluginSdk\Properties\Amount;
 
-class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements SupportsRefundsInterface, SupportsAuthorizationsInterface {
+class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements SupportsRefundsInterface, SupportsAuthorizationsInterface, PaymentMethodFormInterface {
   use Drupal\commerce_ginger\RedirectTrait;
 
   /**
@@ -43,12 +47,12 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
   protected $webhook;
 
   /**
-   * var Bankconfig.
+   * var Helper.
    */
-  protected $bankconfig;
+  protected $helper;
 
   /**
-   * var BuildersRedefiner
+   * var BuilderRedefiner
    */
   protected $builderRedefiner;
 
@@ -63,8 +67,8 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
     MinorUnitsConverterInterface $minor_units_converter = NULL
   ) {
     $this->webhook = new Webhook();
-    $this->builderRedefiner = new BuildersRedefiner();
-    $this->bankconfig = new Bankconfig();
+    $this->builderRedefiner = new BuilderRedefiner();
+    $this->helper = new Helper();
 
     parent::__construct(
       $configuration,
@@ -120,21 +124,19 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
   public function refundPayment(PaymentInterface $payment, Price $amount = NULL)
   {
     $client = $this->builderRedefiner->getClient();
-    if (!$this->builderRedefiner->isOrderRefunded($client->getOrder($payment->getRemoteId()))) {
-      try {
-        $client->refundOrder($payment->getRemoteId());
-      } catch (\Exception $e) {
-        \Drupal::logger($this->bankconfig->getLoggerChanel())->error($e);
-        if ($e->getMessage()) {
-          throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($e->getMessage());
-        } else {
-          throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order is not yet captured, only captured order could be refunded!'));
-        }
-
-      }
-    } else {
+    if (OrderHelper::isOrderRefunded($client->getOrder($payment->getRemoteId()))) {
       throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order already refunded!'));
     }
+    try {
+      $client->refundOrder($payment->getRemoteId(), new Amount($amount->getNumber()*100));
+    } catch (\Exception $exception) {
+      \Drupal::logger(Bankconfig::getLoggerChanel())->error($exception);
+      if ($exception->getMessage()) {
+        throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($exception->getMessage());
+      }
+      throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order is not yet captured, only captured order could be refunded!'));
+    }
+
     $payment->setState('refunded');
     $payment->save();
   }
@@ -142,24 +144,22 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
   public function capturePayment(PaymentInterface $payment, Price $amount = NULL)
   {
     $client = $this->builderRedefiner->getClient();
-
-    if ($this->builderRedefiner->isOrderCapturable($client->getOrder($payment->getRemoteId()))) {
-      try {
-        $client->captureOrderTransaction($payment->getRemoteId());
-      } catch (\Exception $exception) {
-        if ($client->getOrder($payment->getRemoteId())->getStatus() == 'completed') {
-          \Drupal::logger($this->bankconfig->getLoggerChanel())->error($exception);
-          throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order should be completed'));
-        } else {
-          \Drupal::logger($this->bankconfig->getLoggerChanel())->error($exception);
-          throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Capturing failed'));
-        }
-      }
-      $payment->setState('captured');
-      $payment->save();
-    } else {
+    if (!OrderHelper::isOrderCapturable($client->getOrder($payment->getRemoteId()))) {
       throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order do not require capturing'));
     }
+
+    try {
+      $client->captureOrderTransaction($payment->getRemoteId());
+    } catch (\Exception $exception) {
+      \Drupal::logger(Bankconfig::getLoggerChanel())->error($exception);
+      if ($client->getOrder($payment->getRemoteId())->getStatus() == 'completed') {
+        throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order should be completed'));
+      }
+      throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Capturing failed'));
+    }
+
+    $payment->setState('captured');
+    $payment->save();
   }
 
   public function voidPayment(PaymentInterface $payment)
@@ -185,7 +185,7 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
 
     $this->webhook->processOrderStatus($transaction_id, $payment);
 
-    parent::onReturn($order, $request); // TODO: Change the autogenerated stub
+    parent::onReturn($order, $request);
   }
 
   /**
@@ -196,13 +196,23 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
   public function onNotify(Request $request) {
     $input = null;
     try {
-      $input = json_decode( file_get_contents( "php://input" ), true );
+      $input = json_decode( file_get_contents( "php://input" ), true);
     } catch (\Exception $e) {
-      \Drupal::logger($this->bankconfig->getLoggerChanel())->error($exception);
+      \Drupal::logger(Bankconfig::getLoggerChanel())->error($exception);
     }
     if (isset($input['order_id'])) {
       $this->webhook->processWebhook($input, $this->entityTypeManager);
     }
     parent::onNotify($request);
+  }
+
+  /**
+   * This method allow to add forms on checkout page.
+   *
+   * {@inheritdoc}
+   */
+  public function prepareForm(array $form)
+  {
+    return false;
   }
 }

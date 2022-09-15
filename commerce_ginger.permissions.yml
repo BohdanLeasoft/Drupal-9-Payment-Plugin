@@ -1,4 +1,4 @@
 administer commerce_ginger:
-  title: 'Administer Ginger Payment Gateway'
+  title: 'Administer BANKNAME Payment Gateway'
   description: 'Perform administration tasks'
   restrict access: TRUE

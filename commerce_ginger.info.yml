@@ -1,5 +1,5 @@
-name: Ginger Payment Gateway
-description: Provides Commerce integration for the Ginger Gateway.
+name: BANKNAME Payment Gateway
+description: Provides Commerce integration for the BANKNAME Gateway.
 type: module
 
 core_version_requirement: ^9

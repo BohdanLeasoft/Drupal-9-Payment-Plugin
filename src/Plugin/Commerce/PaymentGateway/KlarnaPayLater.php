@@ -32,4 +32,12 @@ class KlarnaPayLater extends BaseOffsitePaymentGateway
   {
     return true;
   }
+
+  public function prepareForm(array $form)
+  {
+    $form = $this->helper->setBirthday($form);
+    $form = $this->helper->setGender($form);
+    $form = $this->helper->setDefaultButtons($form);
+    return $form;
+  }
 }

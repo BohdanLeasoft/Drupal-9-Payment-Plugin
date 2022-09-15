@@ -1,5 +1,5 @@
 {
-  "name": "BohdanLeasoft/Drupal-9-Payment-Plugin",
+  "name": "jnmist/drupal8-commerce2-offsite-gateway-example",
   "description": "An integration between Drupal 9 with Commerce 2 and a Ginger gateway.",
   "type": "drupal-module",
   "require": {

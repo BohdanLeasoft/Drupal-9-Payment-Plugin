@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway;
 
+use Drupal\commerce_ginger\Bankconfig\Bankconfig;
 use Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway\BaseOffsitePaymentGateway;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 
@@ -19,6 +20,8 @@ use Drupal\commerce_payment\Entity\PaymentInterface;
  */
 class AfterPay extends BaseOffsitePaymentGateway
 {
+
+
   /**
    * Checks whether the given payment can be captured.
    *
@@ -31,5 +34,17 @@ class AfterPay extends BaseOffsitePaymentGateway
   public function canCapturePayment(PaymentInterface $payment)
   {
     return true;
+  }
+
+  public function prepareForm(array $form)
+  {
+    $language = \Drupal::languageManager()->getCurrentLanguage()->getId();
+
+    $form = $this->helper->setBirthday($form);
+    $form = $this->helper->setGender($form);
+    $link = Bankconfig::getAfterPayTermsLink($language);
+    $form = $this->helper->setTermsLink($form, $link);
+    $form = $this->helper->setDefaultButtons($form);
+    return $form;
   }
 }

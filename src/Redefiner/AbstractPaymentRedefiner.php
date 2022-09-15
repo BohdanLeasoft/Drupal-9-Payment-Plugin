@@ -1,5 +1,5 @@
 <?php
-namespace Drupal\commerce_ginger\Redefiners;
+namespace Drupal\commerce_ginger\Redefiner;
 
 use Drupal\commerce_ginger\PluginForm\AbstractPayment;
 
@@ -8,7 +8,7 @@ use Drupal\commerce_ginger\PluginForm\AbstractPayment;
  *
  * This class for redefining AbstractPayment
  *
- * @package Drupal\commerce_ginger\Redefiners
+ * @package Drupal\commerce_ginger\Redefiner
  */
 
 class AbstractPaymentRedefiner extends AbstractPayment

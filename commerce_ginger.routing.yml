@@ -1,7 +1,7 @@
 commerce_ginger.form:
   path: '/admin/config/system/commerce_ginger'
   defaults:
-    _title: 'Ginger Payment Gateway'
+    _title: 'BANKNAME Payment Gateway'
     _form: '\Drupal\commerce_ginger\Form\BasicSettingsForm'
   requirements:
     _permission: 'access commerce administration pages'

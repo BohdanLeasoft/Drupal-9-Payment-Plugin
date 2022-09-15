@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\commerce_ginger\Builders;
+namespace Drupal\commerce_ginger\Builder;
 use GingerPluginSdk\Collections\AdditionalAddresses;
 use GingerPluginSdk\Collections\PhoneNumbers;
 use GingerPluginSdk\Entities\Address;
@@ -9,24 +9,18 @@ use GingerPluginSdk\Properties\Birthdate;
 use GingerPluginSdk\Properties\Country;
 use GingerPluginSdk\Properties\EmailAddress;
 use GingerPluginSdk\Properties\Locale;
-use Drupal\commerce_ginger\Builders\ClientBuilder;
+use Drupal\commerce_ginger\Builder\ClientBuilder;
 
 /**
  * Class CustomerBuilder.
  *
  * This class contain methods for collecting data about customer
  *
- * @package Drupal\commerce_ginger\Builders
+ * @package Drupal\commerce_ginger\Builder
  */
 
 class CustomerBuilder extends ClientBuilder
 {
-
-  public function __construct()
-  {
-    parent::__construct();
-  }
-
   public function getAddress($billing_info, $addressType)
   {
     return new Address(

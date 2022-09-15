@@ -3,11 +3,11 @@
 namespace Drupal\commerce_ginger\Controller;
 
 use Drupal\commerce\Response\NeedsRedirectException;
-use Drupal\commerce_ginger\Redefiners\BuildersRedefiner;
-use Drupal\commerce_ginger\Builders\OrderBuilder;
-use Drupal\commerce_ginger\Builders\ClientBuilder;
+use Drupal\commerce_ginger\Redefiner\BuilderRedefiner;
+use Drupal\commerce_ginger\Helper\OrderHelper;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\commerce_ginger\Bankconfigs\Bankconfig;
+use Drupal\commerce_ginger\Bankconfig\Bankconfig;
+use Drupal\commerce_ginger\Controller\OrderController;
 use GingerPluginSdk\Client;
 
 class Webhook
@@ -15,17 +15,9 @@ class Webhook
   use StringTranslationTrait;
 
   /**
-   * @var OrderBuilder
+   * @var BuilderRedefiner
    */
-  private $orderBuilder;
-  /**
-   * @var Bankconfig
-   */
-  private $bankconfig;
-  /**
-   * @var ClientBuilder
-   */
-  private $clientBuilder;
+  private $builderRedefiner;
   /**
    * @var Client
    */
@@ -33,19 +25,14 @@ class Webhook
 
   public function __construct()
   {
-    $this->orderBuilder = new OrderBuilder();
-    $this->clientBuilder = new ClientBuilder();
-    $this->bankconfig = new Bankconfig();
-    $this->client = $this->clientBuilder->getClient();
+    $this->builderRedefiner = new BuilderRedefiner();
+    $this->client = $this->builderRedefiner->getClient();
   }
 
   public function processWebhook(array $webhookData, $entityTypeManager)
   {
     $orderId = filter_var($webhookData['order_id'],FILTER_SANITIZE_STRING);
-    $projectId = filter_var($webhookData['project_id'],FILTER_SANITIZE_STRING);
-
-    $payment = $this->orderBuilder->getOrderPaymentByTransactionId($orderId, $entityTypeManager);
-
+    $payment = OrderController::getOrderPaymentByTransactionId($orderId, $entityTypeManager);
     $this->processOrderStatus($orderId, $payment);
   }
 
@@ -60,29 +47,26 @@ class Webhook
     }
     switch ($status) {
       case 'error':
-        \Drupal::logger($this->bankconfig->getLoggerChanel())->error(
+        \Drupal::logger(Bankconfig::getLoggerChanel())->error(
           'Order #'.$payment->getOrderId().' Message:'.(current($apiOrder->toArray()['transactions'])['customer_message'] ?? '').' Reason:'. (current($apiOrder->toArray()['transactions'])['reason']) ?? '');
         \Drupal::messenger()->addWarning(current($apiOrder->toArray()['transactions'])['customer_message'] ?? $this->t('Something went wrong, please try again later'));
-        throw new NeedsRedirectException($this->orderBuilder->getCancelUrl($payment));
-      case 'expired':
-        \Drupal::messenger()->addWarning($this->t('Your order is expired, please try again later'));
-        throw new NeedsRedirectException($this->orderBuilder->getCancelUrl($payment));
-      case 'cancelled':
-        \Drupal::messenger()->addWarning($this->t('Your order is cancelled, please try again later'));
-        throw new NeedsRedirectException($this->orderBuilder->getCancelUrl($payment));
+        throw new NeedsRedirectException(OrderHelper::getCancelUrl($payment));
+      case 'expired': case 'cancelled':
+        \Drupal::messenger()->addWarning($this->t(sprintf('Your order is %s, please try again later', $status)));
+        throw new NeedsRedirectException(OrderHelper::getCancelUrl($payment));
         break;
       case 'completed':
         \Drupal::messenger()->addMessage($this->t('Thanks for order!'));
-        return true;
+        return;
       case 'processing':
         \Drupal::messenger()->addMessage($this->t('Your order is processing. Thanks!'));
-        return true;
-      case 'new': if (current($apiOrder->toArray()['transactions'])['payment_method'] == 'bank-transfer') {
+        return;
+      case 'new': if ($apiOrder->getCurrentTransaction()->getPaymentMethod()->get() == 'bank-transfer') {
         break;
       }
 
       default:
-        throw new NeedsRedirectException($this->orderBuilder->getCancelUrl($payment));
+        throw new NeedsRedirectException(OrderHelper::getCancelUrl($payment));
     }
 
   }

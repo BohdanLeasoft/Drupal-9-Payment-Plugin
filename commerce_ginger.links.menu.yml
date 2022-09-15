@@ -1,12 +1,12 @@
 commerce_ginger.form:
   route_name: commerce_ginger.form
-  title: 'Ginger Payment Gateway'
-  description: 'URL and Mode Settings for the Ginger module.'
+  title: 'BANKNAME Payment Gateway'
+  description: 'URL and Mode Settings for the BANKNAME module.'
   parent: system.admin_config_system
 
 commerce.store_configuration:
   type: config_object
-  label: 'Ginger config'
+  label: 'BANKNAME config'
   mapping:
     apikey:
       type: text
