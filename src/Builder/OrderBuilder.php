@@ -55,6 +55,17 @@ class OrderBuilder extends CustomerBuilder
     );
   }
 
+  public function getShipmentsIsEmpty($order)
+  {
+    $shipments = null;
+    try {
+      $shipments = $order->get('shipments')->isEmpty();
+    } catch (\Exception $exception) {
+      return null;
+    }
+      return $shipments;
+  }
+
   public function getOrderLines(PaymentInterface $payment)
   {
     $payment_amount = $payment->getAmount();
@@ -63,6 +74,8 @@ class OrderBuilder extends CustomerBuilder
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     $order = $payment->getOrder();
     $orderItemsInfo = $this->getOrderItemsInfo($order);
+
+
 
     $orderLines = new OrderLines();
     foreach ($orderItemsInfo as $orderItem)
@@ -80,7 +93,8 @@ class OrderBuilder extends CustomerBuilder
       ));
     }
 
-    if ($order->hasField('shipments') && !$order->get('shipments')->isEmpty()) {
+
+    if ($order->hasField('shipments') && !$this->getShipmentsIsEmpty($order)) {
       $shipments = $order->get('shipments');
       foreach ($order->get('shipments')->referencedEntities() as $shipment) {
         if ($shipment->get('shipping_profile')->isEmpty()) {
@@ -99,9 +113,9 @@ class OrderBuilder extends CustomerBuilder
           )
         ));
       }
-
-      return $orderLines;
     }
+
+    return $orderLines;
   }
 
   /**
