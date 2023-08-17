@@ -124,7 +124,9 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
   public function refundPayment(PaymentInterface $payment, Price $amount = NULL)
   {
     $client = $this->builderRedefiner->getClient();
-    if (OrderHelper::isOrderRefunded($client->getOrder($payment->getRemoteId()))) {
+    $order = $client->getOrder($payment->getRemoteId());
+
+    if (OrderHelper::isOrderRefunded($order)) {
       throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order already refunded!'));
     }
     try {
@@ -136,7 +138,7 @@ class BaseOffsitePaymentGateway extends OffsitePaymentGatewayBase implements Sup
       }
       throw  new Drupal\commerce_payment\Exception\PaymentGatewayException($this->t('Order is not yet captured, only captured order could be refunded!'));
     }
-
+    $payment->setRefundedAmount(new Price($amount->getNumber(), $order->toArray()['currency']));
     $payment->setState('refunded');
     $payment->save();
   }
