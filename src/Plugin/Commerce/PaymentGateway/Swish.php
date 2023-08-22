@@ -6,18 +6,18 @@ use Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway\BaseOffsitePaymentGate
 use Drupal\commerce_payment\Entity\PaymentInterface;
 
 /**
- * Provides the Viacash offsite Checkout payment gateway.
+ * Provides the Swish offsite Checkout payment gateway.
  *
  * @CommercePaymentGateway(
- *   id = "viacash",
- *   label = @Translation("Viacash (Off-site redirect)"),
- *   display_label = @Translation("Viacash"),
+ *   id = "swish",
+ *   label = @Translation("Swish (Off-site redirect)"),
+ *   display_label = @Translation("Swish"),
  *    forms = {
  *     "offsite-payment" = "Drupal\commerce_ginger\PluginForm\AbstractPayment",
  *   }
  * )
  */
-class Viacash extends BaseOffsitePaymentGateway
+class Swish extends BaseOffsitePaymentGateway
 {
 
 }

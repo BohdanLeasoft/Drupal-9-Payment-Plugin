@@ -6,18 +6,18 @@ use Drupal\commerce_ginger\Plugin\Commerce\PaymentGateway\BaseOffsitePaymentGate
 use Drupal\commerce_payment\Entity\PaymentInterface;
 
 /**
- * Provides the Viacash offsite Checkout payment gateway.
+ * Provides the Sepa Direct Debit offsite Checkout payment gateway.
  *
  * @CommercePaymentGateway(
- *   id = "viacash",
- *   label = @Translation("Viacash (Off-site redirect)"),
- *   display_label = @Translation("Viacash"),
+ *   id = "sepa-direct-debit",
+ *   label = @Translation("Sepa Direct Debit (Off-site redirect)"),
+ *   display_label = @Translation("Sepa Direct Debit"),
  *    forms = {
  *     "offsite-payment" = "Drupal\commerce_ginger\PluginForm\AbstractPayment",
  *   }
  * )
  */
-class Viacash extends BaseOffsitePaymentGateway
+class SepaDirectDebit extends BaseOffsitePaymentGateway
 {
 
 }
